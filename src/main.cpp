@@ -120,10 +120,14 @@ class $modify(EditorUI) {
 		return ret;
 	}
 
+#ifndef GEODE_IS_ANDROID
+
 	void rotationforCommand(EditCommand command){
 		EditorUI::rotationforCommand(command);
 		playSoundIfExists("rotate.ogg"_spr);
 	}
+
+#endif
 
 	void onDuplicate(cocos2d::CCObject* sender){
 		EditorUI::onDuplicate(sender);
