@@ -120,6 +120,11 @@ class $modify(EditorUI) {
 		return ret;
 	}
 
+	void rotationforCommand(EditCommand command){
+		EditorUI::rotationforCommand(command);
+		playSoundIfExists("rotate.ogg"_spr);
+	}
+
 	void onDuplicate(cocos2d::CCObject* sender){
 		EditorUI::onDuplicate(sender);
 		playSoundIfExists("duplicate.ogg"_spr);
