@@ -28,10 +28,13 @@ void playSoundIfExists(std::string path, float pitch){
 	if (exists){
 		existingSounds[path] = true;
 
+#ifndef GEODE_IS_ANDROID
 		FMODAudioEngine::sharedEngine()->m_currentSoundChannel->setPaused(false);
 		FMODAudioEngine::sharedEngine()->m_backgroundMusicChannel->setPaused(false);
 		FMODAudioEngine::sharedEngine()->m_globalChannel->setPaused(false);
 		FMODAudioEngine::sharedEngine()->m_system->update();
+#endif
+
 		FMODAudioEngine::sharedEngine()->playEffectAdvanced(path, 1, 0, 1, pitch, true, false, 0, 0, 0, 0, false, 0, false, true, 0, 0, 0, 0);
 	}
 }
