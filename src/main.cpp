@@ -192,6 +192,7 @@ class $modify(EditorUI) {
 		playSoundIfExists("redo.ogg"_spr);
 	}
 
+#ifndef GEODE_IS_ANDROID
     void zoomIn(cocos2d::CCObject* p0){
 		EditorUI::zoomIn(p0);
 		playSoundIfExists("zoomIn.ogg"_spr);
@@ -201,6 +202,6 @@ class $modify(EditorUI) {
 		EditorUI::zoomOut(p0);
 		playSoundIfExists("zoomOut.ogg"_spr);
 	}
-
+#endif
 };
 
