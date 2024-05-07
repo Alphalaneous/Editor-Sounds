@@ -1,6 +1,7 @@
 #include <Geode/Geode.hpp>
 #include <Geode/modify/EditorUI.hpp>
 #include <Geode/modify/LevelEditorLayer.hpp>
+//#include <Geode/modify/FMODAudioEngine.hpp>
 
 using namespace geode::prelude;
 
@@ -8,33 +9,77 @@ bool initFinished = false;
 bool playSelectSound = true;
 std::map<std::string, bool> existingSounds;
 
-void playSoundIfExists(std::string path){
 
-		if(!initFinished) return;
 
-		bool exists = false;
+void playSoundIfExists(std::string path, float pitch){
 
-		if(existingSounds[path]){
-			exists = true;
-		}
-		else{
-			auto soundFile = ghc::filesystem::path(path);
-			exists = !soundFile.empty();
-		}
+	if(!initFinished) return;
 
-		if (exists){
+	bool exists = false;
 
-			existingSounds[path] = true;
-			
-        	FMODAudioEngine::sharedEngine()->playEffectAsync(path);
-		}
+	if(existingSounds[path]){
+		exists = true;
 	}
+	else{
+		auto soundFile = ghc::filesystem::path(path);
+		exists = !soundFile.empty();
+	}
+
+	if (exists){
+		existingSounds[path] = true;
+
+		FMODAudioEngine::sharedEngine()->m_currentSoundChannel->setPaused(false);
+		FMODAudioEngine::sharedEngine()->m_backgroundMusicChannel->setPaused(false);
+		FMODAudioEngine::sharedEngine()->m_globalChannel->setPaused(false);
+		FMODAudioEngine::sharedEngine()->m_system->update();
+		FMODAudioEngine::sharedEngine()->playEffectAdvanced(path, 1, 0, 1, pitch, true, false, 0, 0, 0, 0, false, 0, false, true, 0, 0, 0, 0);
+	}
+}
+
+void playSoundIfExists(std::string path){
+	playSoundIfExists(path, 1);
+}
+
+/*class $modify(FMODAudioEngine){
+	void playEffectAdvanced(gd::string p0, float p1, float p2, float p3, float p4, bool p5, bool p6, int p7, int p8, int p9, int p10, bool p11, int p12, bool p13, bool p14, int p15, int p16, float p17, int p18){
+		log::info("p0 {}", p0); //path
+		log::info("p1 {}", p1); //speed
+		log::info("p2 {}", p2); //? 0
+		log::info("p3 {}", p3); //volume
+		log::info("p4 {}", p4); //pitch
+		log::info("p5 {}", p5); //fft enabled
+		log::info("p6 {}", p6); //reverb enabled
+		log::info("p7 {}", p7); //start
+		log::info("p8 {}", p8); //end
+		log::info("p9 {}", p9); //fade in
+		log::info("p10 {}", p10); //fade out
+		log::info("p11 {}", p11); //loop enabled
+		log::info("p12 {}", p12); //? 0
+		log::info("p13 {}", p13); //override
+		log::info("p14 {}", p14); //? true
+		log::info("p15 {}", p15); //? 0
+		log::info("p16 {}", p16); //unique ID
+		log::info("p17 {}", p17); //min interval
+		log::info("p18 {}", p18); //sfx group
+		FMODAudioEngine::playEffectAdvanced(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, p18);
+	}
+};*/
+
+float randomFloat(float min, float max) {
+    float random = ((float) rand()) / (float) RAND_MAX;
+
+    float range = max - min;  
+    return (random*range) + min;
+}
 
 class $modify(LevelEditorLayer){
 
 	GameObject* createObject(int p0, cocos2d::CCPoint p1, bool p2){
 		auto ret = LevelEditorLayer::createObject(p0, p1, p2);
-		playSoundIfExists("place.ogg"_spr);
+
+		//float randomPitch = randomFloat(0.95, 1.05);
+
+		playSoundIfExists("place.ogg"_spr, 1);
 		return ret;
 	}
 };
