@@ -168,14 +168,10 @@ class $modify(EditorUI) {
 		return ret;
 	}
 
-#ifndef GEODE_IS_ANDROID
-
-	void rotationforCommand(EditCommand command){
-		EditorUI::rotationforCommand(command);
+	void transformObjectCall(EditCommand command){
+		EditorUI::transformObjectCall(command);
 		playSoundIfExists("rotate.ogg"_spr);
 	}
-
-#endif
 
 	void onDuplicate(cocos2d::CCObject* sender){
 		EditorUI::onDuplicate(sender);
@@ -192,8 +188,25 @@ class $modify(EditorUI) {
 		playSoundIfExists("redo.ogg"_spr);
 	}
 
-#ifndef GEODE_IS_ANDROID
-    void zoomIn(cocos2d::CCObject* p0){
+	void updateZoom(float p0){
+		EditorUI::updateZoom(p0);
+
+	}
+
+#ifdef GEODE_IS_ANDROID
+    void zoomGameLayer(bool p0){
+		EditorUI::zoomGameLayer(p0);
+
+		if(p0){
+			playSoundIfExists("zoomIn.ogg"_spr);
+		}
+		else{
+			playSoundIfExists("zoomOut.ogg"_spr);
+		}
+	}
+#endif
+#ifdef GEODE_IS_WINDOWS
+	void zoomIn(cocos2d::CCObject* p0){
 		EditorUI::zoomIn(p0);
 		playSoundIfExists("zoomIn.ogg"_spr);
 	}
