@@ -188,11 +188,6 @@ class $modify(EditorUI) {
 		playSoundIfExists("redo.ogg"_spr);
 	}
 
-	void updateZoom(float p0){
-		EditorUI::updateZoom(p0);
-
-	}
-
 #ifdef GEODE_IS_ANDROID
     void zoomGameLayer(bool p0){
 		EditorUI::zoomGameLayer(p0);
