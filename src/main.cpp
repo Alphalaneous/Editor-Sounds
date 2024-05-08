@@ -9,6 +9,7 @@ using namespace geode::prelude;
 bool initFinished = false;
 bool playSelectSound = true;
 bool playDeleteSound = true;
+bool playAnySound = true;
 std::map<std::string, bool> existingSounds;
 
 
@@ -16,6 +17,8 @@ std::map<std::string, bool> existingSounds;
 void playSoundIfExists(std::string path, float pitch){
 
 	if(!initFinished) return;
+
+	if(!playAnySound) return;
 
 	bool exists = false;
 
@@ -210,6 +213,36 @@ class $modify(EditorUI) {
 	void doPasteObjects(bool p0){
 		EditorUI::doPasteObjects(p0);
 		playSoundIfExists("paste.ogg"_spr);
+	}
+
+	void onNewCustomItem(cocos2d::CCObject* sender){
+		playAnySound = false;
+		EditorUI::onNewCustomItem(sender);
+		playAnySound = true;
+	}
+
+	void onDeleteCustomItem(cocos2d::CCObject* sender){
+		playAnySound = false;
+		EditorUI::onDeleteCustomItem(sender);
+		playAnySound = true;
+	}
+
+    void orderDownCustomItem(cocos2d::CCObject* sender){
+		playAnySound = false;
+		EditorUI::orderDownCustomItem(sender);
+		playAnySound = true;
+	}
+
+    void orderUpCustomItem(cocos2d::CCObject* sender){
+		playAnySound = false;
+		EditorUI::orderUpCustomItem(sender);
+		playAnySound = true;
+	}
+
+	void reloadCustomItems(){
+		playAnySound = false;
+		EditorUI::reloadCustomItems();
+		playAnySound = true;
 	}
 
 	cocos2d::CCPoint moveForCommand(EditCommand command){
