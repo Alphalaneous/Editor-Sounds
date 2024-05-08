@@ -70,18 +70,27 @@ void playSoundIfExists(std::string path){
 	}
 };*/
 
-float randomFloat(float min, float max) {
-    float random = ((float) rand()) / (float) RAND_MAX;
-
-    float range = max - min;  
-    return (random*range) + min;
+int random(int min, int max){
+   static bool first = true;
+   if (first) {  
+      srand(time(nullptr)); 
+      first = false;
+   }
+   return min + rand() % ((max + 1) - min);
 }
 
 class $modify(LevelEditorLayer){
 
 	GameObject* createObject(int p0, cocos2d::CCPoint p1, bool p2){
 		auto ret = LevelEditorLayer::createObject(p0, p1, p2);
-		playSoundIfExists("place.ogg"_spr);
+
+		int rand = random(1, 3);
+
+		std::string formatted = fmt::format("place_{}.ogg", rand);
+
+		std::string path = std::string(geode::Mod::get()->expandSpriteName(formatted.c_str()));
+
+		playSoundIfExists(path);
 		return ret;
 	}
 
@@ -144,11 +153,6 @@ class $modify(EditorUI) {
 				m_fields->m_lastPos = currentPos;
 			}
 		}
-
-		
-
-
-		log::info("{}", currentPos);
 	}
 
     void selectObject(GameObject* p0, bool p1){
@@ -210,7 +214,40 @@ class $modify(EditorUI) {
 
 	cocos2d::CCPoint moveForCommand(EditCommand command){
 		auto ret = EditorUI::moveForCommand(command);
-		playSoundIfExists("move.ogg"_spr);
+
+		switch(command){
+			case EditCommand::Down:
+			case EditCommand::Up:
+			case EditCommand::Left:
+			case EditCommand::Right:
+				playSoundIfExists("move_1.ogg"_spr);
+				break;
+			case EditCommand::HalfDown:
+			case EditCommand::HalfUp:
+			case EditCommand::HalfLeft:
+			case EditCommand::HalfRight:
+				playSoundIfExists("move_2.ogg"_spr);
+				break;
+			case EditCommand::SmallDown:
+			case EditCommand::SmallUp:
+			case EditCommand::SmallLeft:
+			case EditCommand::SmallRight:
+				playSoundIfExists("move_3.ogg"_spr);
+				break;
+			case EditCommand::TinyDown:
+			case EditCommand::TinyUp:
+			case EditCommand::TinyLeft:
+			case EditCommand::TinyRight:
+				playSoundIfExists("move_4.ogg"_spr);
+				break;
+			case EditCommand::BigDown:
+			case EditCommand::BigUp:
+			case EditCommand::BigLeft:
+			case EditCommand::BigRight:
+				playSoundIfExists("move_5.ogg"_spr);
+				break;
+		}
+
 		return ret;
 	}
 
