@@ -314,6 +314,7 @@ class $modify(EditorUI) {
 		}
 	}
 
+#ifndef GEODE_IS_ANDROID
 	void onLockLayer(cocos2d::CCObject* sender){
 		EditorUI::onLockLayer(sender);
 		LevelEditorLayer* levelEditorLayer = this->m_editorLayer;
@@ -330,7 +331,7 @@ class $modify(EditorUI) {
 			}
 		}
 	}
-
+#endif
 #ifdef GEODE_IS_ANDROID
     void zoomGameLayer(bool p0){
 		EditorUI::zoomGameLayer(p0);
