@@ -2,11 +2,13 @@
 #include <Geode/modify/EditorUI.hpp>
 #include <Geode/modify/LevelEditorLayer.hpp>
 //#include <Geode/modify/FMODAudioEngine.hpp>
+#include <Geode/modify/EditButtonBar.hpp>
 
 using namespace geode::prelude;
 
 bool initFinished = false;
 bool playSelectSound = true;
+bool playDeleteSound = true;
 std::map<std::string, bool> existingSounds;
 
 
@@ -79,15 +81,37 @@ class $modify(LevelEditorLayer){
 
 	GameObject* createObject(int p0, cocos2d::CCPoint p1, bool p2){
 		auto ret = LevelEditorLayer::createObject(p0, p1, p2);
-
-		//float randomPitch = randomFloat(0.95, 1.05);
-
-		playSoundIfExists("place.ogg"_spr, 1);
+		playSoundIfExists("place.ogg"_spr);
 		return ret;
+	}
+
+	void removeObject(GameObject* p0, bool p1){
+		LevelEditorLayer::removeObject(p0, p1);
+		if(playDeleteSound && initFinished){
+			playSoundIfExists("delete.ogg"_spr);
+		}
+	}
+};
+
+class $modify(EditButtonBar){
+
+	void onLeft(cocos2d::CCObject* sender){
+		EditButtonBar::onLeft(sender);
+		playSoundIfExists("switchPage.ogg"_spr);
+	}
+
+	void onRight(cocos2d::CCObject* sender){
+		EditButtonBar::onRight(sender);
+		playSoundIfExists("switchPage.ogg"_spr);
 	}
 };
 
 class $modify(EditorUI) {
+
+	struct Fields {
+        bool m_playtesting = false;
+		int m_lastPos = 0;
+    };
 
 	void onCreateObject(int p0){
 		playSelectSound = false;
@@ -105,6 +129,26 @@ class $modify(EditorUI) {
 		initFinished = true;
 
 		return true;
+	}
+
+	void sliderChanged(cocos2d::CCObject* p0){
+		EditorUI::sliderChanged(p0);
+
+		Slider* slider = this->m_positionSlider;
+
+		int currentPos = floor(slider->getThumb()->getValue()*100);
+
+		if(currentPos % 7 == 0){
+			if(m_fields->m_lastPos != currentPos){
+				playSoundIfExists("sliderTick.ogg"_spr);
+				m_fields->m_lastPos = currentPos;
+			}
+		}
+
+		
+
+
+		log::info("{}", currentPos);
 	}
 
     void selectObject(GameObject* p0, bool p1){
@@ -143,7 +187,9 @@ class $modify(EditorUI) {
 	}
 
 	void onDeleteSelected(cocos2d::CCObject* sender){
+		playDeleteSound = false;
 		EditorUI::onDeleteSelected(sender);
+		playDeleteSound = true;
 		playSoundIfExists("delete.ogg"_spr);
 	}
 
@@ -186,6 +232,103 @@ class $modify(EditorUI) {
 	void redoLastAction(cocos2d::CCObject* p0){
 		EditorUI::redoLastAction(p0);
 		playSoundIfExists("redo.ogg"_spr);
+	}
+
+	void onCreateButton(cocos2d::CCObject* sender){
+		EditorUI::onCreateButton(sender);
+		playSoundIfExists("objectButton.ogg"_spr);
+	}
+
+	void onSelectBuildTab(cocos2d::CCObject* sender){
+		EditorUI::onSelectBuildTab(sender);
+		playSoundIfExists("switchTab.ogg"_spr);
+	}
+
+	void toggleMode(cocos2d::CCObject* sender){
+		EditorUI::toggleMode(sender);
+		playSoundIfExists("button.ogg"_spr);
+	}
+
+	void toggleSwipe(cocos2d::CCObject* p0){
+		EditorUI::toggleSwipe(p0);
+		playSoundIfExists("button.ogg"_spr);
+	}
+    
+    void toggleEnableRotate(cocos2d::CCObject* p0){
+		EditorUI::toggleEnableRotate(p0);
+		playSoundIfExists("button.ogg"_spr);
+	}
+   
+    void toggleFreeMove(cocos2d::CCObject* p0){
+		EditorUI::toggleFreeMove(p0);
+		playSoundIfExists("button.ogg"_spr);
+	}
+
+	void toggleSnap(cocos2d::CCObject* p0){
+		EditorUI::toggleSnap(p0);
+		playSoundIfExists("button.ogg"_spr);
+	}
+
+	void onGroupSticky(cocos2d::CCObject* sender){
+		EditorUI::onGroupSticky(sender);
+		playSoundIfExists("link.ogg"_spr);
+	}
+
+	void onUngroupSticky(cocos2d::CCObject* sender){
+		EditorUI::onUngroupSticky(sender);
+		playSoundIfExists("unlink.ogg"_spr);
+	}
+
+    void onGoToBaseLayer(cocos2d::CCObject* sender){
+		EditorUI::onGoToBaseLayer(sender);
+		playSoundIfExists("switchPage.ogg"_spr);
+	}
+
+    void onGroupDown(cocos2d::CCObject* sender){
+		EditorUI::onGroupDown(sender);
+		playSoundIfExists("switchPage.ogg"_spr);
+	}
+
+	void onGroupUp(cocos2d::CCObject* sender){
+		EditorUI::onGroupUp(sender);
+		playSoundIfExists("switchPage.ogg"_spr);
+	}
+
+	void onPlaytest(cocos2d::CCObject* sender){
+		EditorUI::onPlaytest(sender);
+		m_fields->m_playtesting = true;
+	}
+
+	void onStopPlaytest(cocos2d::CCObject* sender){
+		EditorUI::onStopPlaytest(sender);
+		m_fields->m_playtesting = false;
+	}
+
+
+	void keyDown(cocos2d::enumKeyCodes keycode){
+		EditorUI::keyDown(keycode);
+		if(keycode != 13 && keycode != 113 && keycode != 114 && keycode != 115 && keycode != 116 && keycode != 117){
+			if(keycode == 39 && !m_fields->m_playtesting){
+				playSoundIfExists("switchPage.ogg"_spr);
+			}
+		}
+	}
+
+	void onLockLayer(cocos2d::CCObject* sender){
+		EditorUI::onLockLayer(sender);
+		LevelEditorLayer* levelEditorLayer = this->m_editorLayer;
+		
+		if(levelEditorLayer->m_currentLayer != -1){
+
+			gd::vector<bool> lockedLayers = levelEditorLayer->m_lockedLayers;
+
+			if(lockedLayers[levelEditorLayer->m_currentLayer]){
+				playSoundIfExists("lock.ogg"_spr);
+			}
+			else{
+				playSoundIfExists("unlock.ogg"_spr);
+			}
+		}
 	}
 
 #ifdef GEODE_IS_ANDROID
