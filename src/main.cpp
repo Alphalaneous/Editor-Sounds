@@ -120,9 +120,13 @@ class $modify(EditButtonBar){
 
 class $modify(EditorUI) {
 
-	struct Fields {
+    static void onModify(auto& self) {
+        (void) self.setHookPriority("EditorUI::moveForCommand", INT_MIN);
+    }
+
+    struct Fields {
         bool m_playtesting = false;
-		int m_lastPos = 0;
+        int m_lastPos = 0;
     };
 
 	void onCreateObject(int p0){
