@@ -3,6 +3,8 @@
 #include <Geode/modify/LevelEditorLayer.hpp>
 //#include <Geode/modify/FMODAudioEngine.hpp>
 #include <Geode/modify/EditButtonBar.hpp>
+#include <Geode/modify/GJBaseGameLayer.hpp>
+#include <Geode/modify/EditorPauseLayer.hpp>
 
 using namespace geode::prelude;
 
@@ -11,8 +13,6 @@ bool playSelectSound = true;
 bool playDeleteSound = true;
 bool playAnySound = true;
 std::map<std::string, bool> existingSounds;
-
-
 
 void playSoundIfExists(std::string path, float pitch){
 
@@ -26,7 +26,7 @@ void playSoundIfExists(std::string path, float pitch){
 		exists = true;
 	}
 	else{
-		auto soundFile = ghc::filesystem::path(path);
+		auto soundFile = std::filesystem::path(path);
 		exists = !soundFile.empty();
 	}
 
@@ -48,31 +48,6 @@ void playSoundIfExists(std::string path){
 	playSoundIfExists(path, 1);
 }
 
-/*class $modify(FMODAudioEngine){
-	void playEffectAdvanced(gd::string p0, float p1, float p2, float p3, float p4, bool p5, bool p6, int p7, int p8, int p9, int p10, bool p11, int p12, bool p13, bool p14, int p15, int p16, float p17, int p18){
-		log::info("p0 {}", p0); //path
-		log::info("p1 {}", p1); //speed
-		log::info("p2 {}", p2); //? 0
-		log::info("p3 {}", p3); //volume
-		log::info("p4 {}", p4); //pitch
-		log::info("p5 {}", p5); //fft enabled
-		log::info("p6 {}", p6); //reverb enabled
-		log::info("p7 {}", p7); //start
-		log::info("p8 {}", p8); //end
-		log::info("p9 {}", p9); //fade in
-		log::info("p10 {}", p10); //fade out
-		log::info("p11 {}", p11); //loop enabled
-		log::info("p12 {}", p12); //? 0
-		log::info("p13 {}", p13); //override
-		log::info("p14 {}", p14); //? true
-		log::info("p15 {}", p15); //? 0
-		log::info("p16 {}", p16); //unique ID
-		log::info("p17 {}", p17); //min interval
-		log::info("p18 {}", p18); //sfx group
-		FMODAudioEngine::playEffectAdvanced(p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11, p12, p13, p14, p15, p16, p17, p18);
-	}
-};*/
-
 int random(int min, int max){
    static bool first = true;
    if (first) {  
@@ -89,21 +64,13 @@ class $modify(LevelEditorLayer){
 
 		int rand = random(1, 3);
 
-		std::string formatted = fmt::format("place_{}.ogg", rand);
+		std::string formatted = fmt::format("place_{}.ogg"_spr, rand);
 
-		std::string path = std::string(geode::Mod::get()->expandSpriteName(formatted.c_str()));
-
-		playSoundIfExists(path);
+		playSoundIfExists(formatted);
 		return ret;
 	}
-
-	void removeObject(GameObject* p0, bool p1){
-		LevelEditorLayer::removeObject(p0, p1);
-		if(playDeleteSound && initFinished){
-			playSoundIfExists("delete.ogg"_spr);
-		}
-	}
 };
+
 
 class $modify(EditButtonBar){
 
@@ -116,6 +83,25 @@ class $modify(EditButtonBar){
 		EditButtonBar::onRight(sender);
 		playSoundIfExists("switchPage.ogg"_spr);
 	}
+};
+
+class $modify(EditorPauseLayer) {
+
+	void onSelectAll(cocos2d::CCObject* sender) {
+		EditorPauseLayer::onSelectAll(sender);
+		playSoundIfExists("select.ogg"_spr);
+	}
+
+	void onSelectAllLeft(cocos2d::CCObject* sender) {
+		EditorPauseLayer::onSelectAllLeft(sender);
+		playSoundIfExists("select.ogg"_spr);
+	}
+
+	void onSelectAllRight(cocos2d::CCObject* sender) {
+		EditorPauseLayer::onSelectAllRight(sender);
+		playSoundIfExists("select.ogg"_spr);
+	}
+
 };
 
 class $modify(EditorUI) {
@@ -177,24 +163,9 @@ class $modify(EditorUI) {
 		playSoundIfExists("select.ogg"_spr);
 	}
 
-    void selectAll(){
-		EditorUI::selectAll();
-		playSoundIfExists("select.ogg"_spr);
-	}
-  
-    void selectAllWithDirection(bool p0){
-		EditorUI::selectAllWithDirection(p0);
-		playSoundIfExists("select.ogg"_spr);
-	}
-
 	void onDeselectAll(cocos2d::CCObject* sender){
 		EditorUI::onDeselectAll(sender);
 		playSoundIfExists("deselect.ogg"_spr);
-	}
-
-	void deleteObject(GameObject* p0, bool p1){
-		EditorUI::deleteObject(p0, p1);
-		playSoundIfExists("delete.ogg"_spr);
 	}
 
 	void onDeleteSelected(cocos2d::CCObject* sender){
@@ -378,7 +349,6 @@ class $modify(EditorUI) {
 		m_fields->m_playtesting = false;
 	}
 
-
 	void keyDown(cocos2d::enumKeyCodes keycode){
 		EditorUI::keyDown(keycode);
 		if(keycode != 13 && keycode != 113 && keycode != 114 && keycode != 115 && keycode != 116 && keycode != 117){
@@ -388,7 +358,8 @@ class $modify(EditorUI) {
 		}
 	}
 
-#ifndef GEODE_IS_ANDROID
+//todo members are fucked
+/*#ifndef GEODE_IS_ANDROID
 	void onLockLayer(cocos2d::CCObject* sender){
 		EditorUI::onLockLayer(sender);
 		LevelEditorLayer* levelEditorLayer = this->m_editorLayer;
@@ -405,7 +376,8 @@ class $modify(EditorUI) {
 			}
 		}
 	}
-#endif
+#endif*/
+
 #ifdef GEODE_IS_ANDROID
     void zoomGameLayer(bool p0){
 		EditorUI::zoomGameLayer(p0);
@@ -418,16 +390,17 @@ class $modify(EditorUI) {
 		}
 	}
 #endif
+
 #ifdef GEODE_IS_WINDOWS
+
 	void zoomIn(cocos2d::CCObject* p0){
 		EditorUI::zoomIn(p0);
 		playSoundIfExists("zoomIn.ogg"_spr);
 	}
-
+	
     void zoomOut(cocos2d::CCObject* p0){
 		EditorUI::zoomOut(p0);
 		playSoundIfExists("zoomOut.ogg"_spr);
 	}
 #endif
 };
-
