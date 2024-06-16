@@ -5,6 +5,7 @@
 #include <Geode/modify/EditButtonBar.hpp>
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/EditorPauseLayer.hpp>
+#include <Geode/modify/BoomScrollLayer.hpp>
 
 using namespace geode::prelude;
 
@@ -71,8 +72,16 @@ class $modify(LevelEditorLayer){
 	}
 };
 
+class $modify(BoomScrollLayer) {
+	void instantMoveToPage(int p0){
+		BoomScrollLayer::instantMoveToPage(p0);
+		if(EditorUI::get()){
+			playSoundIfExists("switchPage.ogg"_spr);
+		}
+	}
+};
 
-class $modify(EditButtonBar){
+/*class $modify(EditButtonBar){
 
 	void onLeft(cocos2d::CCObject* sender){
 		EditButtonBar::onLeft(sender);
@@ -83,7 +92,7 @@ class $modify(EditButtonBar){
 		EditButtonBar::onRight(sender);
 		playSoundIfExists("switchPage.ogg"_spr);
 	}
-};
+};*/
 
 class $modify(EditorPauseLayer) {
 
