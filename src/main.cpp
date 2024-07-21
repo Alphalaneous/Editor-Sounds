@@ -94,6 +94,8 @@ class $modify(BoomScrollLayer) {
 	}
 };*/
 
+#ifndef GEODE_IS_ANDROID
+
 class $modify(EditorPauseLayer) {
 
 	void onSelectAll(cocos2d::CCObject* sender) {
@@ -113,6 +115,8 @@ class $modify(EditorPauseLayer) {
 
 };
 
+#endif
+
 class $modify(EditorUI) {
 
     static void onModify(auto& self) {
@@ -123,6 +127,20 @@ class $modify(EditorUI) {
         bool m_playtesting = false;
         int m_lastPos = 0;
     };
+
+#ifdef GEODE_IS_ANDROID
+
+	void selectAllWithDirection(bool p0){
+		EditorUI::selectAllWithDirection(p0);
+		playSoundIfExists("select.ogg"_spr);
+	}
+
+    void selectAll() {
+		EditorUI::selectAll();
+		playSoundIfExists("select.ogg"_spr);
+	}
+
+#endif
 
 	void onCreateObject(int p0){
 		playSelectSound = false;
