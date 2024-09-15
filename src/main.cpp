@@ -190,6 +190,7 @@ class $modify(MyEditorUI, EditorUI) {
             case EditCommand::BigRight:
                 playSoundIfExists("move_5.ogg"_spr);
                 break;
+            default: break;
         }
 
         return ret;
@@ -316,7 +317,7 @@ class $modify(MyEditorUI, EditorUI) {
 
     #ifdef GEODE_IS_ANDROID
     void zoomGameLayer(bool in) {
-        EditorUI::zoomGameLayer(p0);
+        EditorUI::zoomGameLayer(in);
         if (in) {
             playSoundIfExists("zoomIn.ogg"_spr);
         }
