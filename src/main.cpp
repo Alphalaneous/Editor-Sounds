@@ -292,7 +292,7 @@ class $modify(MyEditorUI, EditorUI) {
 
     void keyDown(cocos2d::enumKeyCodes keycode) {
         EditorUI::keyDown(keycode);
-        if (keycode == 39 || keycode == 37 && !m_fields->m_playtesting) {
+        if ((keycode == 39 || keycode == 37) && !m_fields->m_playtesting) {
             playSoundIfExists("switchPage.ogg"_spr);
         }
     }
