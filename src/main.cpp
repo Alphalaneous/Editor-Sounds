@@ -346,9 +346,9 @@ class $modify(MyEditButtonBar, EditButtonBar) {
 
         EditButtonBar::loadFromItems(items, c, r, unkBool);
 
-        if (auto menu = getChildOfType<CCMenu>(this, 0)) {
-            CCMenuItemSpriteExtra* prevButton = getChildOfType<CCMenuItemSpriteExtra>(menu, 0);
-            CCMenuItemSpriteExtra* nextButton = getChildOfType<CCMenuItemSpriteExtra>(menu, 1);
+        if (auto menu = this->getChildByType<CCMenu>(0)) {
+            CCMenuItemSpriteExtra* prevButton = menu->getChildByType<CCMenuItemSpriteExtra>(0);
+            CCMenuItemSpriteExtra* nextButton = menu->getChildByType<CCMenuItemSpriteExtra>(1);
             prevButton->m_pfnSelector = menu_selector(MyEditButtonBar::onLeft_h);
             nextButton->m_pfnSelector = menu_selector(MyEditButtonBar::onRight_h);
         }
