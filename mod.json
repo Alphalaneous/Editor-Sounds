@@ -1,10 +1,10 @@
 {
-	"geode": "4.0.0-alpha.1",
+	"geode": "4.0.0-beta.1",
 	"gd": {
 		"win": "2.2074",
 		"android": "2.2074"
 	},
-	"version": "v1.1.6-alpha.1",
+	"version": "v1.1.6",
 	"id": "alphalaneous.editorsounds",
 	"name": "Editor Sounds",
 	"developer": "Alphalaneous",
@@ -15,7 +15,7 @@
 		]
 	},
 	"links": {
-        "homepage": "https://twitter.com/alphalaneous",
+        "homepage": "https://linktr.ee/Alphalaneous",
         "source": "https://github.com/Alphalaneous/Editor-Sounds",
         "community": "https://discord.gg/Txn2CA5dHF"
     }
