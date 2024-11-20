@@ -20,7 +20,7 @@ int random(int min, int max) {
 class $modify(MyEditorUI, EditorUI) {
 
     static void onModify(auto& self) {
-        (void) self.setHookPriority("EditorUI::moveForCommand", INT_MIN);
+        (void) self.setHookPriority("EditorUI::moveForCommand", -1000);
     }
 
     struct Fields {
@@ -190,7 +190,9 @@ class $modify(MyEditorUI, EditorUI) {
             case EditCommand::BigRight:
                 playSoundIfExists("move_5.ogg"_spr);
                 break;
-            default: break;
+            default: 
+                playSoundIfExists("move_2.ogg"_spr);
+            break;
         }
 
         return ret;
