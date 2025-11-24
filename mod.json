@@ -6,7 +6,7 @@
 		"mac": "2.2074",
 		"ios": "2.2074"
 	},
-	"version": "v1.2.0",
+	"version": "v1.2.1",
 	"id": "alphalaneous.editorsounds",
 	"name": "Editor Sounds",
 	"developer": "Alphalaneous",
@@ -23,5 +23,23 @@
     },
 	"tags": [
 		"editor", "enhancement"
-	]
+	],
+	"dependencies": {
+		"geode.node-ids": ">=v1.20.0"
+	},
+	"settings": {
+		"enable-custom-sounds": {
+			"type": "bool",
+			"name": "Enable Custom Sounds",
+			"description": "Allows you to point to a different folder containing the sounds you want.",
+			"default": false
+		},
+		"custom-sound-path": {
+			"type": "folder",
+			"name": "Custom Sound Path",
+			"description": "The path containing all your sounds",
+			"enable-if": "enable-custom-sounds",
+			"default": ""
+		}
+	}
 }

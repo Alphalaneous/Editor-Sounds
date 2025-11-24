@@ -3,291 +3,396 @@
 #include <Geode/modify/LevelEditorLayer.hpp>
 #include <Geode/modify/EditButtonBar.hpp>
 #include <Geode/modify/EditorPauseLayer.hpp>
-#include <random>
+#include "CustomKeybinds.hpp"
+#include "Geode/loader/Log.hpp"
+#include "SoundHandler.hpp"
+#include "HijackCallback.hpp"
 
 using namespace geode::prelude;
 
-static int random(int lower, int upper) {
-    if (lower > upper) std::swap(lower, upper);
-    
-    static std::random_device rd; 
-    static std::mt19937 gen(rd()); 
-
-    std::uniform_int_distribution<> dist(lower, upper);
-    return dist(gen);
+bool areObjectsSelected(EditorUI* editorUI) {
+    if (!editorUI) return false;
+    return editorUI->m_selectedObject || (editorUI->m_selectedObjects && editorUI->m_selectedObjects->count() > 0);
 }
 
-struct Sound {
-    std::string path;
-    float pitch;
-};
+void initializeSounds() {
+    auto& sh = SoundHandler::get();
 
-inline bool operator<(const Sound& a, const Sound& b) {
-    return a.path < b.path;
-}
-
-struct HijackCallback : public CCObject {
-
-    using Hijack = std::function<void(std::function<void(CCObject* sender)> orig, CCObject* sender)>;
-
-    Hijack m_method;
-    SEL_MenuHandler m_selector;
-
-    static HijackCallback* create(Hijack method, SEL_MenuHandler originalSelector) {
-        auto ret = new HijackCallback();
-        if (ret->init(method, originalSelector)) {
-            ret->autorelease();
-            return ret;
-        }
-        delete ret;
-        return nullptr;
-    }
-
-    bool init(Hijack method, SEL_MenuHandler originalSelector) {
-        m_method = method;
-        m_selector = originalSelector;
+    sh.registerSound("select", [](auto& sh, auto editorUI) {
+        if (sh.m_shouldSkipSelectSound) return false;
+        sh.m_shouldSkipDeselectSound = true;
         return true;
-    }
+    });
 
-    void callback(CCObject* sender) {
-        auto btn = static_cast<CCMenuItem*>(sender);
-        auto hijack = static_cast<HijackCallback*>(btn->getUserObject("hijack"_spr));
-        
-        if (hijack->m_method) hijack->m_method([btn, hijack] (CCObject* sender) {
-            (btn->m_pListener->*hijack->m_selector)(sender);
-        }, sender);
-    }
+    sh.registerSound("deselect", [](auto& sh, auto editorUI) {
+        if (sh.m_shouldSkipDeselectSound || !areObjectsSelected(editorUI)) return false;
+        sh.m_shouldSkipSelectSound = true;
+        return true;
+    });
 
-    static void set(CCMenuItem* btn, Hijack method) {
-        if (btn->getUserObject("hijack"_spr)) return;
+    sh.registerSound("place-object", [](auto& sh, auto editorUI) {
+        sh.m_shouldSkipSelectSound = true;
+        sh.m_shouldSkipDeselectSound = true;
+        return true;
+    });
 
-        auto hijack = HijackCallback::create(method, btn->m_pfnSelector);
-        btn->setUserObject("hijack"_spr, hijack);
-        btn->m_pfnSelector = menu_selector(HijackCallback::callback);
-    }
-};
+    sh.registerSound("delete", [](auto& sh, auto editorUI) {
+        sh.m_shouldSkipDeselectSound = true;
+        return true;
+    });
 
-struct SoundHandler {
+    sh.registerSound("copy", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    });
 
-    bool m_shouldPlayAudio = false;
-    bool m_shouldSkipSelectSound = false;
-    bool m_shouldSkipDeselectSound = false;
-    bool m_shouldSkipPlaceSound = false;
-    bool m_shouldSkipZoomSound = false;
-    bool m_shouldSkipPageSound = false;
+    sh.registerSound("paste", [](auto& sh, auto editorUI) {
+        sh.m_shouldSkipPlaceSound = true;
+        sh.m_shouldSkipSelectSound = true;
+        sh.m_shouldSkipDeselectSound = true;
+        return true;
+    });
 
-    std::unordered_map<std::string, bool> m_existingSounds;
-    std::set<Sound> m_queuedSounds;
+    sh.registerSound("undo", [](auto& sh, auto editorUI) {
+        if (editorUI->m_editorLayer->m_undoObjects->count() == 0) return false;
+        sh.m_shouldSkipPlaceSound = true;
+        sh.m_shouldSkipSelectSound = true;
+        sh.m_shouldSkipDeselectSound = true;
+        return true;
+    });
 
-    static SoundHandler& get() {
-        static SoundHandler ret;
-        return ret;
-    }
+    sh.registerSound("redo", [](auto& sh, auto editorUI) {
+        if (editorUI->m_editorLayer->m_redoObjects->count() == 0) return false;
+        sh.m_shouldSkipPlaceSound = true;
+        sh.m_shouldSkipSelectSound = true;
+        sh.m_shouldSkipDeselectSound = true;
+        return true;
+    });
 
-    void playSound(const std::string& path, float pitch = 1) {
-        if (!m_shouldPlayAudio) return;
-        bool exists = m_existingSounds[path];
-        if (!exists) exists = !std::filesystem::path(path).empty();
-        
-        if (exists) {
-            m_existingSounds[path] = true;
-            m_queuedSounds.insert(Sound{path, pitch});
+    sh.registerSound("move-down", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move"
+    });
+
+    sh.registerSound("move-up", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move"
+    });
+
+    sh.registerSound("move-left", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move"
+    });
+
+    sh.registerSound("move-right", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move"
+    });
+
+    sh.registerSound("move-half-down", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-half"
+    });
+
+    sh.registerSound("move-half-up", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-half"
+    });
+
+    sh.registerSound("move-half-left", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-half"
+    });
+
+    sh.registerSound("move-half-right", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-half"
+    });
+
+    sh.registerSound("move-small-down", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-small"
+    });
+
+    sh.registerSound("move-small-up", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-small"
+    });
+
+    sh.registerSound("move-small-left", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-small"
+    });
+
+    sh.registerSound("move-small-right", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-small"
+    });
+
+    sh.registerSound("move-tiny-down", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-tiny"
+    });
+
+    sh.registerSound("move-tiny-up", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-tiny"
+    });
+
+    sh.registerSound("move-tiny-left", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-tiny"
+    });
+
+    sh.registerSound("move-tiny-right", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-tiny"
+    });
+
+    sh.registerSound("move-big-down", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-big"
+    });
+
+    sh.registerSound("move-big-up", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-big"
+    });
+
+    sh.registerSound("move-big-left", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-big"
+    });
+
+    sh.registerSound("move-big-right", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "move-big"
+    });
+
+    sh.registerSound("rotate-clockwise", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "rotate"
+    });
+
+    sh.registerSound("rotate-counter-clockwise", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "rotate"
+    });
+
+    sh.registerSound("rotate-45-clockwise", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "rotate"
+    });
+
+        sh.registerSound("rotate-45-counter-clockwise", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "rotate"
+    });
+
+    sh.registerSound("flip-x", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "rotate"
+    });
+
+    sh.registerSound("flip-y", [](auto& sh, auto editorUI) {
+        return areObjectsSelected(editorUI);
+    }, {
+        .fallback = "rotate"
+    });
+
+    sh.registerSound("duplicate", [](auto& sh, auto editorUI) {
+        if (!areObjectsSelected(editorUI)) return false;
+        sh.m_shouldSkipPlaceSound = true;
+        sh.m_shouldSkipSelectSound = true;
+        sh.m_shouldSkipDeselectSound = true;
+        return true;
+    });
+
+    sh.registerSound("toolbar-categories", [](auto& sh, auto editorUI) {
+        sh.m_shouldSkipDeselectSound = true;
+        return true;
+    }, {
+        .fallback = "generic-button",
+        .keys = {
+            {
+                .id = "robtop.geometry-dash/build-mode",
+                .binds = {
+                    { 
+                        .key = enumKeyCodes::KEY_One 
+                    }
+                }
+            }, 
+            {
+                .id = "robtop.geometry-dash/edit-mode",
+                .binds = {
+                    {
+                        .key = enumKeyCodes::KEY_Two 
+                    }
+                }
+            }, 
+            {
+                .id = "robtop.geometry-dash/delete-mode",
+                .binds = { 
+                    {
+                        .key = enumKeyCodes::KEY_Three 
+                    }
+                }
+            },
+            {
+                .id = "hjfod.betteredit/view-mode"
+            }
         }
-    }
+    });
 
-    void setEnabled(bool audioEnabled) {
-        m_shouldPlayAudio = audioEnabled;
-    }
-
-    void skipZoomSound() {
-        m_shouldSkipZoomSound = true;
-    }
-
-    void playSelect() {
-        if (m_shouldSkipSelectSound) return;
-        m_shouldSkipDeselectSound = true;
-        playSound("select.ogg"_spr);
-    }
-
-    void playDeselect() {
-        if (m_shouldSkipDeselectSound) return;
-        m_shouldSkipSelectSound = true;
-        playSound("deselect.ogg"_spr);
-    }
-
-    void playPlace() {
-        m_shouldSkipSelectSound = true;
-        m_shouldSkipDeselectSound = true;
-        playSound(fmt::format("place_{}.ogg"_spr, random(1, 3)));
-    }
-
-    void playDelete() {
-        m_shouldSkipDeselectSound = true;
-        playSound("delete.ogg"_spr);
-    }
-
-    void playCopy() {
-        playSound("copy.ogg"_spr);
-    }
-
-    void playPaste() {
-        m_shouldSkipPlaceSound = true;
-        m_shouldSkipSelectSound = true;
-        m_shouldSkipDeselectSound = true;
-        playSound("paste.ogg"_spr);
-    }
-
-    void playUndo() {
-        m_shouldSkipPlaceSound = true;
-        m_shouldSkipSelectSound = true;
-        m_shouldSkipDeselectSound = true;
-        playSound("undo.ogg"_spr);
-    }
-
-    void playRedo() {
-        m_shouldSkipPlaceSound = true;
-        m_shouldSkipSelectSound = true;
-        m_shouldSkipDeselectSound = true;
-        playSound("redo.ogg"_spr);
-    }
-
-    void playMove(EditCommand command) {
-        switch (command) {
-            case EditCommand::Down:
-            case EditCommand::Up:
-            case EditCommand::Left:
-            case EditCommand::Right:
-                playSound("move_1.ogg"_spr);
-                break;
-            case EditCommand::HalfDown:
-            case EditCommand::HalfUp:
-            case EditCommand::HalfLeft:
-            case EditCommand::HalfRight:
-                playSound("move_2.ogg"_spr);
-                break;
-            case EditCommand::SmallDown:
-            case EditCommand::SmallUp:
-            case EditCommand::SmallLeft:
-            case EditCommand::SmallRight:
-                playSound("move_3.ogg"_spr);
-                break;
-            case EditCommand::TinyDown:
-            case EditCommand::TinyUp:
-            case EditCommand::TinyLeft:
-            case EditCommand::TinyRight:
-                playSound("move_4.ogg"_spr);
-                break;
-            case EditCommand::BigDown:
-            case EditCommand::BigUp:
-            case EditCommand::BigLeft:
-            case EditCommand::BigRight:
-                playSound("move_5.ogg"_spr);
-                break;
-            default: 
-                playSound("move_2.ogg"_spr);
-            break;
+    sh.registerSound("toolbar-toggles", {
+        .fallback = "generic-button",
+        .keys = {
+            {
+                .id = "robtop.geometry-dash/toggle-rotate",
+                .binds = { 
+                    {
+                        .key = enumKeyCodes::KEY_R 
+                    }
+                }
+            }, 
+            {
+                .id = "robtop.geometry-dash/toggle-free-move",
+                .binds = { 
+                    {
+                        .key = enumKeyCodes::KEY_F 
+                    }
+                }
+            }, 
+            {
+                .id = "robtop.geometry-dash/toggle-swipe",
+                .binds = { 
+                    {
+                        .key = enumKeyCodes::KEY_T
+                    }
+                }
+            }, 
+            {
+                .id = "robtop.geometry-dash/toggle-snap",
+                .binds = { 
+                    {
+                        .key = enumKeyCodes::KEY_G
+                    }
+                }
+            }
         }
-    }
+    });
 
-    void playRotate() {
-        playSound("rotate.ogg"_spr);
-    }
+    sh.registerSound("next-page", [](auto& sh, auto editorUI) {
+        sh.queue([] {
+            SoundHandler::get().m_shouldSkipPageSound = true;
+        });
+        return !sh.m_shouldSkipPageSound;
+    });
 
-    void playDuplicate() {
-        m_shouldSkipPlaceSound = true;
-        m_shouldSkipSelectSound = true;
-        m_shouldSkipDeselectSound = true;
-        playSound("duplicate.ogg"_spr);
-    }
+    sh.registerSound("prev-page", [](auto& sh, auto editorUI) {
+        sh.queue([] {
+            SoundHandler::get().m_shouldSkipPageSound = true;
+        });
+        return !sh.m_shouldSkipPageSound;
+    });
 
-    void playObjectButton() {
-        playSound("objectButton.ogg"_spr);
-    }
+    sh.registerSound("base-layer", {
+        .fallback = "prev-page"
+    });
 
-    void playSwitchTab() {
-        playSound("switchTab.ogg"_spr);
-    }
+    sh.registerSound("next-free-layer", {
+        .fallback = "next-page"
+    });
 
-    void playGenericButton() {
-        m_shouldSkipDeselectSound = true;
-        playSound("button.ogg"_spr);
-    }
-
-    void playLink() {
-        playSound("link.ogg"_spr);
-    }
-
-    void playUnlink() {
-        playSound("unlink.ogg"_spr);
-    }
-
-    void playToggleLink() {
-        playSound("toggleLink.ogg"_spr);
-    }
-
-    void playNextPage() {
-        if (m_shouldSkipPageSound) return;
-        playSound("nextPage.ogg"_spr);
-        m_shouldSkipPageSound = true;
-    }
-
-    void playPrevPage() {
-        if (m_shouldSkipPageSound) return;
-        playSound("prevPage.ogg"_spr);
-        m_shouldSkipPageSound = true;
-    }
-
-    void playLockLayer() {
-        playSound("lock.ogg"_spr);
-    }
-
-    void playUnlockLayer() {
-        playSound("unlock.ogg"_spr);
-    }
-
-    void playZoomIn() {
-        if (m_shouldSkipZoomSound) return;
-        playSound("zoomIn.ogg"_spr);
-    }
-    
-    void playZoomOut() {
-        if (m_shouldSkipZoomSound) return;
-        playSound("zoomOut.ogg"_spr);
-    }
-
-    void playSliderTick() {
-        playSound("sliderTick.ogg"_spr);
-    }
-
-    void playGridIncrease() {
-        playSound("gridIncrease.ogg"_spr);
-    }
-
-    void playGridDecrease() {
-        playSound("gridDecrease.ogg"_spr);
-    }
-
-    void playGenericToggle() {
-        playSound("toggle.ogg"_spr);
-    }
-
-    void update() {
-        m_shouldSkipZoomSound = false;
-        m_shouldSkipPlaceSound = false;
-        m_shouldSkipSelectSound = false;
-        m_shouldSkipDeselectSound = false;
-        m_shouldSkipPageSound = false;
-
-        if (!m_shouldPlayAudio || LevelEditorLayer::get()->m_playbackMode == PlaybackMode::Playing) return m_queuedSounds.clear();
-        if (m_queuedSounds.empty()) return;
-
-        for (const auto& sound : m_queuedSounds) {
-            auto fmod = FMODAudioEngine::get();
-            fmod->m_globalChannel->setPaused(false);
-            fmod->playEffectAdvanced(sound.path, 1, 0, 1, sound.pitch, true, false, 0, 0, 0, 0, false, 0, false, true, 0, 0, 0, 0);
+    sh.registerSound("prev-layer", {
+        .fallback = "prev-page",
+        .keys = {
+            {
+                .id = "robtop.geometry-dash/prev-layer",
+                .binds = {
+                    {
+                        .key = enumKeyCodes::KEY_Left
+                    }
+                },
+                .hasRepeat = true,
+                .rate = 50,
+                .delay = 500
+            }
         }
+    });
 
-        m_queuedSounds.clear();
+    sh.registerSound("next-layer", {
+        .fallback = "next-page",
+        .keys = {
+            {
+                .id = "robtop.geometry-dash/next-layer",
+                .binds = {
+                    {
+                        .key = enumKeyCodes::KEY_Right
+                    }
+                },
+                .hasRepeat = true,
+                .rate = 50,
+                .delay = 500
+            }
+        }
+    });
+
+    sh.registerSound("tabs-prev-page", {
+        .fallback = "prev-page"
+    });
+
+    sh.registerSound("tabs-next-page", {
+        .fallback = "next-page"
+    });
+
+    sh.registerSound("switch-tab");
+    sh.registerSound("zoom-in");
+    sh.registerSound("zoom-out");
+    sh.registerSound("lock-layer");
+    sh.registerSound("unlock-layer");
+    sh.registerSound("object-button");
+    sh.registerSound("link");
+    sh.registerSound("unlink");
+    sh.registerSound("toggle-link");
+    sh.registerSound("slider-tick");
+    sh.registerSound("grid-increase");
+    sh.registerSound("grid-decrease");
+    sh.registerSound("toggle-ui");
+}
+
+class $modify(MyEditorPauseLayer, EditorPauseLayer) {
+    void onResume(CCObject* sender) {
+        for (auto& [_, sound] : SoundHandler::get().m_registeredSounds) {
+            for (auto& bindData : sound.m_soundDefaults.keys) {
+                bindData.parse();
+            }
+        }
+        EditorPauseLayer::onResume(sender);
     }
 };
 
@@ -303,13 +408,12 @@ class $modify(MyEditorUI, EditorUI) {
         int m_lastPos = 0;
     };
 
-    bool areObjectsSelected() {
-        return m_selectedObject || (m_selectedObjects && m_selectedObjects->count() > 0);
-    }
-
     bool init(LevelEditorLayer* editorLayer) {
-        SoundHandler::get().setEnabled(false);
+        SoundHandler::get().setup();
+        initializeSounds();
+
         if (!EditorUI::init(editorLayer)) return false;
+
         setupButtons();
         schedule(schedule_selector(MyEditorUI::updateSounds));
         return true;
@@ -319,13 +423,13 @@ class $modify(MyEditorUI, EditorUI) {
         if (auto gridControlsMenu = getChildByID("hjfod.betteredit/grid-size-controls")) {
             if (auto btn1 = gridControlsMenu->getChildByType<CCMenuItem*>(0)) {
                 HijackCallback::set(btn1, [](auto orig, auto sender) {
-                    SoundHandler::get().playGridIncrease();
+                    SoundHandler::get().playSound("grid-increase");
                     orig(sender);
                 });
             }
             if (auto btn2 = gridControlsMenu->getChildByType<CCMenuItem*>(1)) {
                 HijackCallback::set(btn2, [](auto orig, auto sender) {
-                    SoundHandler::get().playGridDecrease();
+                    SoundHandler::get().playSound("grid-decrease");
                     orig(sender);
                 });
             }
@@ -333,35 +437,43 @@ class $modify(MyEditorUI, EditorUI) {
 
         if (auto hideUIbtn = typeinfo_cast<CCMenuItem*>(querySelector("> undo-menu > hjfod.betteredit/hide-ui-toggle"))) {
             HijackCallback::set(hideUIbtn, [](auto orig, auto sender) {
-                SoundHandler::get().playGenericToggle();
+                SoundHandler::get().playSound("toggle-ui");
                 orig(sender);
             });
         }
 
         if (auto nextFreeLayerBtn = typeinfo_cast<CCMenuItem*>(querySelector("> layer-menu > hjfod.betteredit/next-free-layer-button"))) {
             HijackCallback::set(nextFreeLayerBtn, [](auto orig, auto sender) {
-                SoundHandler::get().playNextPage();
+                SoundHandler::get().playSound("next-free-layer");
                 orig(sender);
             });
         }
 
-        if (auto linkToggle = typeinfo_cast<CCMenuItem*>(querySelector("> link-menu > alphalaneous.tinker/link-controls-toggle"))) {
-            HijackCallback::set(linkToggle, [](auto orig, auto sender) {
-                SoundHandler::get().playToggleLink();
-                orig(sender);
-            });
+        if (auto linkMenu = getChildByID("link-menu")) {
+            if (auto btn = static_cast<CCMenuItem*>(linkMenu->getChildByID("alphalaneous.tinker/link-controls-toggle"))) {
+                HijackCallback::set(btn, [](auto orig, auto sender) {
+                    SoundHandler::get().playSound("toggle-link");
+                    orig(sender);
+                });
+            }
+            if (auto btn = static_cast<CCMenuItem*>(linkMenu->getChildByID("alphalaneous.improvedlink/link-controls-toggle"))) {
+                HijackCallback::set(btn, [](auto orig, auto sender) {
+                    SoundHandler::get().playSound("toggle-link");
+                    orig(sender);
+                });
+            }
         }
 
         if (auto buildTabsNavMenu = getChildByID("build-tabs-menu-navigation-menu")) {
             if (auto nextBtn = static_cast<CCMenuItem*>(buildTabsNavMenu->getChildByID("next-button"))) {
                 HijackCallback::set(nextBtn, [](auto orig, auto sender) {
-                    SoundHandler::get().playNextPage();
+                    SoundHandler::get().playSound("tabs-next-page");
                     orig(sender);
                 });
             }
             if (auto prevBtn = static_cast<CCMenuItem*>(buildTabsNavMenu->getChildByID("prev-button"))) {
                 HijackCallback::set(prevBtn, [](auto orig, auto sender) {
-                    SoundHandler::get().playPrevPage();
+                    SoundHandler::get().playSound("tabs-prev-page");
                     orig(sender);
                 });
             }
@@ -370,13 +482,13 @@ class $modify(MyEditorUI, EditorUI) {
         if (auto zoomMenu = getChildByID("zoom-menu")) {
             if (auto zoomInBtn = static_cast<CCMenuItem*>(zoomMenu->getChildByID("zoom-in-button"))) {
                 HijackCallback::set(zoomInBtn, [](auto orig, auto sender) {
-                    SoundHandler::get().playZoomIn();
+                    SoundHandler::get().playSound("zoom-in");
                     orig(sender);
                 });
             }
             if (auto zoomOutBtn = static_cast<CCMenuItem*>(zoomMenu->getChildByID("zoom-out-button"))) {
                 HijackCallback::set(zoomOutBtn, [](auto orig, auto sender) {
-                    SoundHandler::get().playZoomOut();
+                    SoundHandler::get().playSound("zoom-out");
                     orig(sender);
                 });
             }
@@ -386,7 +498,7 @@ class $modify(MyEditorUI, EditorUI) {
             for (auto child : toolbarMenu->getChildrenExt()) {
                 if (auto btn = typeinfo_cast<CCMenuItem*>(child)) {
                     HijackCallback::set(btn, [](auto orig, auto sender) {
-                        SoundHandler::get().playGenericButton();
+                        SoundHandler::get().playSound("toolbar-categories");
                         orig(sender);
                     });
                 }
@@ -397,7 +509,7 @@ class $modify(MyEditorUI, EditorUI) {
             for (auto child : togglesMenu->getChildrenExt()) {
                 if (auto btn = typeinfo_cast<CCMenuItem*>(child)) {
                     HijackCallback::set(btn, [](auto orig, auto sender) {
-                        SoundHandler::get().playGenericButton();
+                        SoundHandler::get().playSound("toolbar-toggles");
                         orig(sender);
                     });
                 }
@@ -407,9 +519,7 @@ class $modify(MyEditorUI, EditorUI) {
 
     void setupCreateMenu() {
         EditorUI::setupCreateMenu();
-        queueInMainThread([] {
-            SoundHandler::get().setEnabled(true);
-        });
+        SoundHandler::get().setEnabled(true);
     }
 
     void updateSounds(float dt) {
@@ -430,110 +540,223 @@ class $modify(MyEditorUI, EditorUI) {
         int stepNew = xPos / DISTANCE;
 
         if (stepNew != stepOld) {
-            SoundHandler::get().playSliderTick();
+            SoundHandler::get().playSound("slider-tick");
         }
 
         m_fields->m_lastPos = xPos;
     }
 
     void selectObject(GameObject* p0, bool p1) {
-        SoundHandler::get().playSelect();
+        SoundHandler::get().playSound("select");
         EditorUI::selectObject(p0, p1);
     }
 
     void selectObjects(CCArray* p0, bool p1) {
-        SoundHandler::get().playSelect();
+        SoundHandler::get().playSound("select");
         EditorUI::selectObjects(p0, p1);
     }
 
     void deselectAll() {
-        if (areObjectsSelected()) SoundHandler::get().playDeselect();
+        SoundHandler::get().playSound("deselect");
         EditorUI::deselectAll();
     }
 
     void deselectObject(GameObject* object) {
-        if (areObjectsSelected()) SoundHandler::get().playDeselect();
+        SoundHandler::get().playSound("deselect");
         EditorUI::deselectObject(object);
     }
 
     void doCopyObjects(bool p0) {
-        if (areObjectsSelected()) SoundHandler::get().playCopy();
+        SoundHandler::get().playSound("copy");
         EditorUI::doCopyObjects(p0);
     }
 
-    void doPasteObjects(bool p0) {
-        if (areObjectsSelected()) SoundHandler::get().playPaste();
-        EditorUI::doPasteObjects(p0);
+    cocos2d::CCArray* pasteObjects(gd::string p0, bool p1, bool p2) {
+        if (GameManager::get()->m_editorClipboard == p0) SoundHandler::get().playSound("paste");
+        else SoundHandler::get().playSound("place-object");
+
+        return EditorUI::pasteObjects(p0, p1, p2);
     }
 
     CCPoint moveForCommand(EditCommand command) {
         auto ret = EditorUI::moveForCommand(command);
-        if (areObjectsSelected()) SoundHandler::get().playMove(command);
+
+        switch (command) {
+            case EditCommand::Down:
+                SoundHandler::get().playSound("move-down");
+                break;
+            case EditCommand::Up:
+                SoundHandler::get().playSound("move-up");
+                break;
+            case EditCommand::Left:
+                SoundHandler::get().playSound("move-left");
+                break;
+            case EditCommand::Right:
+                SoundHandler::get().playSound("move-right");
+                break;
+            case EditCommand::HalfDown:
+                SoundHandler::get().playSound("move-half-down");
+                break;
+            case EditCommand::HalfUp:
+                SoundHandler::get().playSound("move-half-up");
+                break;
+            case EditCommand::HalfLeft:
+                SoundHandler::get().playSound("move-half-left");
+                break;
+            case EditCommand::HalfRight:
+                SoundHandler::get().playSound("move-half-right");
+                break;
+            case EditCommand::SmallDown:
+                SoundHandler::get().playSound("move-small-down");
+                break;
+            case EditCommand::SmallUp:
+                SoundHandler::get().playSound("move-small-up");
+                break;
+            case EditCommand::SmallLeft:
+                SoundHandler::get().playSound("move-small-left");
+                break;
+            case EditCommand::SmallRight:
+                SoundHandler::get().playSound("move-small-right");
+                break;
+            case EditCommand::TinyDown:
+                SoundHandler::get().playSound("move-tiny-down");
+                break;
+            case EditCommand::TinyUp:
+                SoundHandler::get().playSound("move-tiny-up");
+                break;
+            case EditCommand::TinyLeft:
+                SoundHandler::get().playSound("move-tiny-left");
+                break;
+            case EditCommand::TinyRight:
+                SoundHandler::get().playSound("move-tiny-right");
+                break;
+            case EditCommand::BigDown:
+                SoundHandler::get().playSound("move-big-down");
+                break;
+            case EditCommand::BigUp:
+                SoundHandler::get().playSound("move-big-up");
+                break;
+            case EditCommand::BigLeft:
+                SoundHandler::get().playSound("move-big-left");
+                break;
+            case EditCommand::BigRight:
+                SoundHandler::get().playSound("move-big-right");
+                break;
+            default: 
+                SoundHandler::get().playSound("move");
+            break;
+        }
         return ret;
     }
 
     void transformObjectCall(EditCommand command) {
-        if (areObjectsSelected()) SoundHandler::get().playRotate();
+        switch (command) {
+            case EditCommand::RotateCW:
+                SoundHandler::get().playSound("rotate-clockwise");
+                break;
+            case EditCommand::RotateCCW:
+                SoundHandler::get().playSound("rotate-counter-clockwise");
+                break;
+            case EditCommand::RotateCW45:
+                SoundHandler::get().playSound("rotate-45-clockwise");
+                break;
+            case EditCommand::RotateCCW45:
+                SoundHandler::get().playSound("rotate-45-counter-clockwise");
+                break;
+            case EditCommand::FlipX:
+                SoundHandler::get().playSound("flip-x");
+                break;
+            case EditCommand::FlipY:
+                SoundHandler::get().playSound("flip-y");
+                break;
+        default:
+            SoundHandler::get().playSound("rotate");
+            break;
+        }
+
         EditorUI::transformObjectCall(command);
     }
 
     void onDuplicate(CCObject* sender) {
-        if (areObjectsSelected()) SoundHandler::get().playDuplicate();
+        SoundHandler::get().playSound("duplicate");
         EditorUI::onDuplicate(sender);
     }
 
     void undoLastAction(CCObject* p0) {
-        if (m_editorLayer->m_undoObjects->count() > 0) SoundHandler::get().playUndo();
+        SoundHandler::get().playSound("undo");
         EditorUI::undoLastAction(p0);
     }
 
     void redoLastAction(CCObject* p0) {
-        if (m_editorLayer->m_redoObjects->count() > 0) SoundHandler::get().playRedo();
+        SoundHandler::get().playSound("redo");
         EditorUI::redoLastAction(p0);
     }
 
     void onCreateButton(CCObject* sender) {
-        SoundHandler::get().playObjectButton();
+        SoundHandler::get().playSound("object-button");
         EditorUI::onCreateButton(sender);
     }
 
-    void onSelectBuildTab(CCObject* sender) {
-        SoundHandler::get().playSwitchTab();
-        EditorUI::onSelectBuildTab(sender);
+    void selectBuildTab(int tab) {
+        SoundHandler::get().playSound("switch-tab");
+        EditorUI::selectBuildTab(tab);
     }
 
     void onGroupSticky(CCObject* sender) {
-        if (areObjectsSelected()) SoundHandler::get().playLink();
+        auto btn = static_cast<CCMenuItemSpriteExtra*>(sender);
+        if (btn->m_animationEnabled) SoundHandler::get().playSound("link");
         EditorUI::onGroupSticky(sender);
     }
 
     void onUngroupSticky(CCObject* sender) {
-        if (areObjectsSelected()) SoundHandler::get().playUnlink();
+        auto btn = static_cast<CCMenuItemSpriteExtra*>(sender);
+        if (btn->m_animationEnabled) SoundHandler::get().playSound("unlink");
         EditorUI::onUngroupSticky(sender);
     }
 
     void onGoToBaseLayer(CCObject* sender) {
-        SoundHandler::get().playPrevPage();
+        SoundHandler::get().playSound("base-layer");
         EditorUI::onGoToBaseLayer(sender);
     }
 
     void onGroupDown(CCObject* sender) {
-        SoundHandler::get().playPrevPage();
+        SoundHandler::get().playSound("prev-layer");
         EditorUI::onGroupDown(sender);
     }
 
     void onGroupUp(CCObject* sender) {
-        SoundHandler::get().playNextPage();
+        SoundHandler::get().playSound("next-layer");
         EditorUI::onGroupUp(sender);
     }
 
     void keyDown(enumKeyCodes keycode) {
         EditorUI::keyDown(keycode);
-        if (keycode == enumKeyCodes::KEY_Left) {
-            SoundHandler::get().playPrevPage();
+
+        if (auto soundRes = SoundHandler::get().getSoundByKey(keycode)) {
+            auto& sound = soundRes.unwrap();
+            for (auto& bindData : sound.m_soundDefaults.keys) {
+                auto bindRes = bindData.getByKey(keycode);
+                if (!bindRes) continue;
+
+                auto& bind = bindRes.unwrap();
+
+                if (bind.key != keycode) continue;
+                if (CustomKeyinds::isValid(bind)) {
+                    bindData.fire([&] {
+                        sound.play();
+                    });
+                }
+            }
         }
-        if (keycode == enumKeyCodes::KEY_Right) {
-            SoundHandler::get().playNextPage();
+    }
+
+    void keyUp(enumKeyCodes keycode) {
+        EditorUI::keyUp(keycode);
+        for (auto& [_, sound] : SoundHandler::get().m_registeredSounds) {
+            for (auto& bindData : sound.m_soundDefaults.keys) {
+                if (!bindData.getByKey(keycode)) continue;
+                bindData.reset();
+            }
         }
     }
 
@@ -543,41 +766,34 @@ class $modify(MyEditorUI, EditorUI) {
         if (m_editorLayer->m_currentLayer == -1) return;
         
         if (m_editorLayer->m_lockedLayers[m_editorLayer->m_currentLayer]) {
-            SoundHandler::get().playLockLayer();
+            SoundHandler::get().playSound("lock-layer");
         }
         else {
-            SoundHandler::get().playUnlockLayer();
+            SoundHandler::get().playSound("unlock-layer");
         }
     }
     #endif
 
-    void scrollWheel(float p0, float p1) {
-        SoundHandler::get().skipZoomSound();
-        EditorUI::scrollWheel(p0, p1);
-    }
-
-    void onStopPlaytest(CCObject* sender) {
-        SoundHandler::get().skipZoomSound();
-        EditorUI::onStopPlaytest(sender);
-    }
-
     void onDelete(CCObject* sender) {
-        if (areObjectsSelected()) SoundHandler::get().playDelete();
+        auto prevCount = m_editorLayer->m_objectCount;
         EditorUI::onDelete(sender);
+        if (prevCount > m_editorLayer->m_objectCount) {
+            SoundHandler::get().playSound("delete");
+        }
     }
 
     void onDeleteSelected(CCObject* sender) {
-        if (areObjectsSelected()) SoundHandler::get().playDelete();
+        if (areObjectsSelected(this)) SoundHandler::get().playSound("delete");
         EditorUI::onDeleteSelected(sender);
     }
 
     void onDeleteSelectedType(CCObject* sender) {
-        SoundHandler::get().playDelete();
+        if (areObjectsSelected(this)) SoundHandler::get().playSound("delete");
         EditorUI::onDeleteSelectedType(sender);
     }
 
     void onDeleteStartPos(CCObject* sender) {
-        SoundHandler::get().playDelete();
+        if (areObjectsSelected(this)) SoundHandler::get().playSound("delete");
         EditorUI::onDeleteStartPos(sender);
     }
 };
@@ -585,12 +801,12 @@ class $modify(MyEditorUI, EditorUI) {
 class $modify(MyLevelEditorLayer, LevelEditorLayer) {
 
     void removeObject(GameObject* p0, bool p1) {
-        SoundHandler::get().playDelete();
+        if (areObjectsSelected(m_editorUI)) SoundHandler::get().playSound("delete");
         LevelEditorLayer::removeObject(p0, p1);
     }
 
     GameObject* createObject(int p0, CCPoint p1, bool p2) {
-        SoundHandler::get().playPlace();
+        SoundHandler::get().playSound("place-object");
         return LevelEditorLayer::createObject(p0, p1, p2);
     }
 };
@@ -599,19 +815,19 @@ class $modify(MyEditButtonBar, EditButtonBar) {
 
     void loadFromItems(cocos2d::CCArray* objects, int rows, int columns, bool keepPage) {
         EditButtonBar::loadFromItems(objects, rows, columns, keepPage);
-        
-        queueInMainThread([self = Ref(this)] {
+
+        SoundHandler::get().queue([self = Ref(this)] {
             for (auto child : self->getChildrenExt()) {
                 if (auto menu = typeinfo_cast<CCMenu*>(child)) {
                     if (auto prev = menu->getChildByType<CCMenuItemSpriteExtra*>(0)) {
                         HijackCallback::set(prev, [](auto orig, auto sender) {
-                            SoundHandler::get().playPrevPage();
+                            SoundHandler::get().playSound("prev-page");
                             orig(sender);
                         });
                     }
                     if (auto next = menu->getChildByType<CCMenuItemSpriteExtra*>(1)) {
                         HijackCallback::set(next, [](auto orig, auto sender) {
-                            SoundHandler::get().playNextPage();
+                            SoundHandler::get().playSound("next-page");
                             orig(sender);
                         });
                     }

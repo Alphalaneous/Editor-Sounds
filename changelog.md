@@ -1,3 +1,12 @@
+# 1.2.1
+- More fixes
+- More polishing
+
+## Custom Sound Packs are here!
+
+If you have an existing pack that you are manually using, you will need to migrate over to the new naming format.
+View the mod's information on how you should name your files.
+
 # 1.2.0
 - New sounds!
 - New icon! (I spend way too much time on it)
