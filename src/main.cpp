@@ -704,13 +704,13 @@ class $modify(MyEditorUI, EditorUI) {
 
     void onGroupSticky(CCObject* sender) {
         auto btn = static_cast<CCMenuItemSpriteExtra*>(sender);
-        if (btn->m_animationEnabled) SoundHandler::get().playSound("link");
+        if (btn && btn->m_animationEnabled) SoundHandler::get().playSound("link");
         EditorUI::onGroupSticky(sender);
     }
 
     void onUngroupSticky(CCObject* sender) {
         auto btn = static_cast<CCMenuItemSpriteExtra*>(sender);
-        if (btn->m_animationEnabled) SoundHandler::get().playSound("unlink");
+        if (btn && btn->m_animationEnabled) SoundHandler::get().playSound("unlink");
         EditorUI::onUngroupSticky(sender);
     }
 
