@@ -4,7 +4,6 @@
 #include <Geode/modify/EditButtonBar.hpp>
 #include <Geode/modify/EditorPauseLayer.hpp>
 #include "CustomKeybinds.hpp"
-#include "Geode/loader/Log.hpp"
 #include "SoundHandler.hpp"
 #include "HijackCallback.hpp"
 

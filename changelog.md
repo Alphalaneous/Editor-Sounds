@@ -1,3 +1,6 @@
+# 1.2.3
+- Fix a crash when an invalid directory exists
+
 # 1.2.2
 - Fix a crash
 

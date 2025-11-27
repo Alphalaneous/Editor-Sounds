@@ -27,7 +27,8 @@ SoundEvent SoundEvent::create(std::string soundName, OnSoundEvent onEvent, Sound
     if (Mod::get()->getSettingValue<bool>("enable-custom-sounds")) {
         soundPath = Mod::get()->getSettingValue<std::filesystem::path>("custom-sound-path");
     }
-    else {
+
+    if (soundPath.empty() || !std::filesystem::exists(soundPath)) {
         soundPath = Mod::get()->getResourcesDir();
     }
 
