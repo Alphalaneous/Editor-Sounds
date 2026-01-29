@@ -1,3 +1,6 @@
+# 1.2.4
+- 2.2081 Support
+
 # 1.2.3
 - Fix a crash when an invalid directory exists
 

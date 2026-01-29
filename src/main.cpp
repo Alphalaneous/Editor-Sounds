@@ -728,8 +728,8 @@ class $modify(MyEditorUI, EditorUI) {
         EditorUI::onGroupUp(sender);
     }
 
-    void keyDown(enumKeyCodes keycode) {
-        EditorUI::keyDown(keycode);
+    void keyDown(enumKeyCodes keycode, double t) {
+        EditorUI::keyDown(keycode, t);
 
         if (auto soundRes = SoundHandler::get().getSoundByKey(keycode)) {
             auto& sound = soundRes.unwrap();
@@ -749,8 +749,8 @@ class $modify(MyEditorUI, EditorUI) {
         }
     }
 
-    void keyUp(enumKeyCodes keycode) {
-        EditorUI::keyUp(keycode);
+    void keyUp(enumKeyCodes keycode, double t) {
+        EditorUI::keyUp(keycode, t);
         for (auto& [_, sound] : SoundHandler::get().m_registeredSounds) {
             for (auto& bindData : sound.m_soundDefaults.keys) {
                 if (!bindData.getByKey(keycode)) continue;
