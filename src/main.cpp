@@ -441,6 +441,17 @@ class $modify(MyEditorUI, EditorUI) {
             });
         }
 
+        if (auto buildTabsMenu = getChildByID("build-tabs-menu")) {
+            for (auto child : buildTabsMenu->getChildrenExt()) {
+                auto item = typeinfo_cast<CCMenuItem*>(child);
+                if (!item) continue;
+                HijackCallback::set(item, [](auto orig, auto sender) {
+                    SoundHandler::get().playSound("switch-tab");
+                    orig(sender);
+                });
+            }
+        }
+
         if (auto nextFreeLayerBtn = typeinfo_cast<CCMenuItem*>(querySelector("> layer-menu > hjfod.betteredit/next-free-layer-button"))) {
             HijackCallback::set(nextFreeLayerBtn, [](auto orig, auto sender) {
                 SoundHandler::get().playSound("next-free-layer");
@@ -696,9 +707,9 @@ class $modify(MyEditorUI, EditorUI) {
         EditorUI::onCreateButton(sender);
     }
 
-    void selectBuildTab(int tab) {
-        SoundHandler::get().playSound("switch-tab");
-        EditorUI::selectBuildTab(tab);
+    void onStickyToggle(CCObject* sender) {
+        SoundHandler::get().playSound("toggle-link");
+        EditorUI::onStickyToggle(sender);
     }
 
     void onGroupSticky(CCObject* sender) {
@@ -731,6 +742,8 @@ class $modify(MyEditorUI, EditorUI) {
     void keyDown(enumKeyCodes keycode, double t) {
         EditorUI::keyDown(keycode, t);
 
+        if (keycode == cocos2d::KEY_Unknown) return;
+
         if (auto soundRes = SoundHandler::get().getSoundByKey(keycode)) {
             auto& sound = soundRes.unwrap();
             for (auto& bindData : sound.m_soundDefaults.keys) {
@@ -751,6 +764,9 @@ class $modify(MyEditorUI, EditorUI) {
 
     void keyUp(enumKeyCodes keycode, double t) {
         EditorUI::keyUp(keycode, t);
+
+        if (keycode == cocos2d::KEY_Unknown) return;
+
         for (auto& [_, sound] : SoundHandler::get().m_registeredSounds) {
             for (auto& bindData : sound.m_soundDefaults.keys) {
                 if (!bindData.getByKey(keycode)) continue;
@@ -818,6 +834,7 @@ class $modify(MyEditButtonBar, EditButtonBar) {
         SoundHandler::get().queue([self = Ref(this)] {
             for (auto child : self->getChildrenExt()) {
                 if (auto menu = typeinfo_cast<CCMenu*>(child)) {
+                    if (menu->getID() == "alphalaneous.tinker/extras-menu") continue;
                     if (auto prev = menu->getChildByType<CCMenuItemSpriteExtra*>(0)) {
                         HijackCallback::set(prev, [](auto orig, auto sender) {
                             SoundHandler::get().playSound("prev-page");

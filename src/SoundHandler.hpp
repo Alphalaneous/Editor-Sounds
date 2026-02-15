@@ -9,24 +9,24 @@ struct SoundHandler {
     bool m_shouldSkipPlaceSound = false;
     bool m_shouldSkipPageSound = false;
 
-    std::unordered_map<std::string, SoundEvent> m_registeredSounds;
+    StringMap<SoundEvent> m_registeredSounds;
     std::vector<SoundEvent*> m_queuedSounds;
     std::vector<std::function<void()>> m_delayedSchedules;
     std::unordered_map<std::filesystem::path, std::vector<std::filesystem::path>> m_fileCache;
     static SoundHandler& get();
 
-    void registerSound(std::string eventName, SoundEvent::OnSoundEvent soundEvent, SoundDefaults soundDefaults = {});
-    void registerSound(std::string eventName, SoundDefaults soundDefaults = {});
+    void registerSound(ZStringView eventName, SoundEvent::OnSoundEvent&& soundEvent, const SoundDefaults& soundDefaults = {});
+    void registerSound(ZStringView eventName, const SoundDefaults& soundDefaults = {});
 
-    void playSound(const std::string& eventName);
+    void playSound(ZStringView eventName);
     void setup();
-    void queue(std::function<void()> method);
+    void queue(std::function<void()>&& method);
     void setEnabled(bool audioEnabled);
     void skipDeselectSound();
 
     Result<SoundEvent&> getSoundByKey(enumKeyCodes keyCode);
 
     const std::vector<std::filesystem::path>& getFiles(const std::filesystem::path& dir);
-    void findVariants(const std::filesystem::path& dir, std::string_view baseName, std::vector<std::filesystem::path>& out);
+    void findVariants(const std::filesystem::path& dir, ZStringView baseName, std::vector<std::filesystem::path>& out);
     void update();
 };

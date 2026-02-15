@@ -7,15 +7,15 @@ SoundHandler& SoundHandler::get() {
     return ret;
 }
 
-void SoundHandler::registerSound(std::string eventName, SoundEvent::OnSoundEvent soundEvent, SoundDefaults soundDefaults) {
-    m_registeredSounds[eventName] = SoundEvent::create(eventName, soundEvent, soundDefaults);
+void SoundHandler::registerSound(ZStringView eventName, SoundEvent::OnSoundEvent&& soundEvent, const SoundDefaults& soundDefaults) {
+    m_registeredSounds[eventName] = SoundEvent::create(eventName, std::move(soundEvent), soundDefaults);
 }
 
-void SoundHandler::registerSound(std::string eventName, SoundDefaults soundDefaults) {
+void SoundHandler::registerSound(ZStringView eventName, const SoundDefaults& soundDefaults) {
     m_registeredSounds[eventName] = SoundEvent::create(eventName, nullptr, soundDefaults);
 }
 
-void SoundHandler::playSound(const std::string& eventName) {
+void SoundHandler::playSound(ZStringView eventName) {
     if (!m_shouldPlayAudio) return;
     auto sound = &m_registeredSounds[eventName];
     if (std::find(m_queuedSounds.begin(), m_queuedSounds.end(), sound) == m_queuedSounds.end()) {
@@ -37,7 +37,7 @@ void SoundHandler::setup() {
     m_delayedSchedules.clear();
 }
 
-void SoundHandler::queue(std::function<void()> method) {
+void SoundHandler::queue(std::function<void()>&& method) {
     m_delayedSchedules.push_back(std::move(method));
 }
 
@@ -75,7 +75,7 @@ const std::vector<std::filesystem::path>& SoundHandler::getFiles(const std::file
     return list;
 }
 
-void SoundHandler::findVariants(const std::filesystem::path& dir, std::string_view baseName, std::vector<std::filesystem::path>& out) {
+void SoundHandler::findVariants(const std::filesystem::path& dir, ZStringView baseName, std::vector<std::filesystem::path>& out) {
     static const std::regex variantRegex{R"((.+)_var_([0-9]+)$)", std::regex::ECMAScript};
 
     for (const auto& path : getFiles(dir)) {
@@ -104,16 +104,19 @@ void SoundHandler::update() {
     m_shouldSkipDeselectSound = false;
     m_shouldSkipPageSound = false;
 
-    if (m_shouldPlayAudio && LevelEditorLayer::get()->m_playbackMode != PlaybackMode::Playing) {
-        for (const auto sound : m_queuedSounds) {
-            sound->play();
+    if (!m_queuedSounds.empty()) {
+        if (m_shouldPlayAudio && !m_queuedSounds.empty() && LevelEditorLayer::get()->m_playbackMode != PlaybackMode::Playing) {
+            for (const auto sound : m_queuedSounds) {
+                sound->play();
+            }
         }
+        m_queuedSounds.clear();
     }
 
-    m_queuedSounds.clear();
-
-    for (const auto& schedule : m_delayedSchedules) {
-        if (schedule) schedule();
+    if (!m_delayedSchedules.empty()) {
+        for (const auto& schedule : m_delayedSchedules) {
+            if (schedule) schedule();
+        }
+        m_delayedSchedules.clear();
     }
-    m_delayedSchedules.clear();
 }
