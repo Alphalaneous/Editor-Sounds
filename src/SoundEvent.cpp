@@ -13,6 +13,16 @@ void SoundEvent::play() const {
     fmod->playEffectAsync(utils::string::pathToString(path));
 }
 
+void SoundEvent::preload() const {
+    if (m_foundVariants.empty()) return;
+
+    auto path = m_foundVariants[EditorSounds::utils::random(0, m_foundVariants.size()-1)];
+
+    auto fmod = FMODAudioEngine::get();
+    fmod->m_globalChannel->setPaused(false);
+    fmod->playEffectAdvanced(utils::string::pathToString(path), 1.f, 0.f, 0.f, 0.f, false, false, 0, 1, 0, 0, false, 0, false, true, 0, 0, 0.f, 0);
+}
+
 SoundEvent SoundEvent::create(std::string soundName, OnSoundEvent onEvent, SoundDefaults defaults) {
     SoundEvent event;
     event.m_soundName = soundName;

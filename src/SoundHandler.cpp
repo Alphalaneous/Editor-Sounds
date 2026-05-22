@@ -44,6 +44,11 @@ void SoundHandler::queue(std::function<void()>&& method) {
 void SoundHandler::setEnabled(bool audioEnabled) {
     queue([this, audioEnabled] {
         m_shouldPlayAudio = audioEnabled;
+        if (audioEnabled) {
+            for (auto& [_, sound] : m_registeredSounds) {
+                sound.preload();
+            }
+        }
     });
 }
 

@@ -1,3 +1,6 @@
+# 1.2.5
+- Preload sounds to fix them not playing after first playtest
+
 # 1.2.4
 - 2.2081 Support
 

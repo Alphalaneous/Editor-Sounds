@@ -20,6 +20,7 @@ struct SoundEvent {
     std::vector<std::filesystem::path> m_foundVariants;
 
     void play() const;
+    void preload() const;
 
     static SoundEvent create(std::string soundName, OnSoundEvent onEvent, SoundDefaults defaults);
 };
