@@ -395,6 +395,12 @@ class $modify(MyEditorPauseLayer, EditorPauseLayer) {
     }
 };
 
+class $modify(UpdateLevelEditorLayer, LevelEditorLayer) {
+    void updateSounds(float dt) {
+        SoundHandler::get().update();
+    }
+};
+
 class $modify(MyEditorUI, EditorUI) {
 
     static void onModify(auto& self) {
@@ -414,7 +420,7 @@ class $modify(MyEditorUI, EditorUI) {
         if (!EditorUI::init(editorLayer)) return false;
 
         setupButtons();
-        schedule(schedule_selector(MyEditorUI::updateSounds));
+        editorLayer->schedule(schedule_selector(UpdateLevelEditorLayer::updateSounds));
         return true;
     }
 
@@ -530,10 +536,6 @@ class $modify(MyEditorUI, EditorUI) {
     void setupCreateMenu() {
         EditorUI::setupCreateMenu();
         SoundHandler::get().setEnabled(true);
-    }
-
-    void updateSounds(float dt) {
-        SoundHandler::get().update();
     }
 
     void sliderChanged(CCObject* p0) {

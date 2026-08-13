@@ -1,3 +1,6 @@
+# 1.2.6
+- Fix sounds disappearing after saving</c>
+
 # 1.2.5
 - Preload sounds to fix them not playing after first playtest
 
