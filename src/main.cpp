@@ -25,7 +25,7 @@ void initializeSounds() {
     });
 
     sh.registerSound("deselect", [](auto& sh, auto editorUI) {
-        if (sh.m_shouldSkipDeselectSound || !areObjectsSelected(editorUI)) return false;
+        if (sh.m_shouldSkipDeselectSound) return false;
         sh.m_shouldSkipSelectSound = true;
         return true;
     });
@@ -413,6 +413,7 @@ class $modify(MyEditorUI, EditorUI) {
     struct Fields {
         int m_lastPos = 0;
         bool m_skipNextTab;
+        bool m_justDeleted;
     };
 
     bool init(LevelEditorLayer* editorLayer) {
@@ -596,13 +597,25 @@ class $modify(MyEditorUI, EditorUI) {
     }
 
     void deselectAll() {
-        SoundHandler::get().playSound("deselect");
         EditorUI::deselectAll();
+        runAction(CallFuncExt::create([this] {
+            if (!m_fields->m_justDeleted) {
+                SoundHandler::get().playSound("deselect");
+            }
+        }));
     }
 
     void deselectObject(GameObject* object) {
-        SoundHandler::get().playSound("deselect");
+        bool wasSelected = false;
+        if ((m_selectedObject && m_selectedObject == object) || m_selectedObjects->containsObject(object)) {
+            wasSelected = true;
+        }
         EditorUI::deselectObject(object);
+        runAction(CallFuncExt::create([this, wasSelected] {
+            if (wasSelected && !m_fields->m_justDeleted) {
+                SoundHandler::get().playSound("deselect");
+            }
+        }));
     }
 
     void doCopyObjects(bool p0) {
@@ -819,33 +832,61 @@ class $modify(MyEditorUI, EditorUI) {
     #endif
 
     void onDelete(CCObject* sender) {
-        auto prevCount = m_editorLayer->m_objectCount;
+        auto prevCount = m_editorLayer->m_objects->count();
         EditorUI::onDelete(sender);
-        if (prevCount > m_editorLayer->m_objectCount) {
+        m_fields->m_justDeleted = true;
+        runAction(CallFuncExt::create([this] {
+            m_fields->m_justDeleted = false;
+        }));
+        if (prevCount > m_editorLayer->m_objects->count()) {
             SoundHandler::get().playSound("delete");
         }
     }
 
     void onDeleteSelected(CCObject* sender) {
-        if (areObjectsSelected(this)) SoundHandler::get().playSound("delete");
+        auto prevCount = m_editorLayer->m_objects->count();
         EditorUI::onDeleteSelected(sender);
+        m_fields->m_justDeleted = true;
+        runAction(CallFuncExt::create([this] {
+            m_fields->m_justDeleted = false;
+        }));
+        if (prevCount > m_editorLayer->m_objects->count()) {
+            SoundHandler::get().playSound("delete");
+        }
     }
 
     void onDeleteSelectedType(CCObject* sender) {
-        if (areObjectsSelected(this)) SoundHandler::get().playSound("delete");
+        auto prevCount = m_editorLayer->m_objects->count();
         EditorUI::onDeleteSelectedType(sender);
+        m_fields->m_justDeleted = true;
+        runAction(CallFuncExt::create([this] {
+            m_fields->m_justDeleted = false;
+        }));
+        if (prevCount > m_editorLayer->m_objects->count()) {
+            SoundHandler::get().playSound("delete");
+        }
     }
 
     void onDeleteStartPos(CCObject* sender) {
-        if (areObjectsSelected(this)) SoundHandler::get().playSound("delete");
+        auto prevCount = m_editorLayer->m_objects->count();
         EditorUI::onDeleteStartPos(sender);
+        m_fields->m_justDeleted = true;
+        runAction(CallFuncExt::create([this] {
+            m_fields->m_justDeleted = false;
+        }));
+        if (prevCount > m_editorLayer->m_objects->count()) {
+            SoundHandler::get().playSound("delete");
+        }
     }
 };
 
 class $modify(MyLevelEditorLayer, LevelEditorLayer) {
 
     void removeObject(GameObject* p0, bool p1) {
-        if (areObjectsSelected(m_editorUI)) SoundHandler::get().playSound("delete");
+        if (areObjectsSelected(m_editorUI)) {
+            static_cast<MyEditorUI*>(m_editorUI)->m_fields->m_justDeleted = true;
+            SoundHandler::get().playSound("delete");
+        }
         LevelEditorLayer::removeObject(p0, p1);
     }
 

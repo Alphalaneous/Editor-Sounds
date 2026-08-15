@@ -1,6 +1,8 @@
 # 1.3.0
 - Add basic Optional API
 - Fix some sounds not playing
+- Fix delete and deselect sounds playing at the same time
+- Fix deleting start positions not playing a sound
 
 # 1.2.6
 - Fix sounds disappearing after saving
