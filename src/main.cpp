@@ -6,6 +6,7 @@
 #include "CustomKeybinds.hpp"
 #include "SoundHandler.hpp"
 #include "HijackCallback.hpp"
+#include <alphalaneous.editortab_api/include/EditorTabAPI.hpp>
 
 using namespace geode::prelude;
 
@@ -411,6 +412,7 @@ class $modify(MyEditorUI, EditorUI) {
 
     struct Fields {
         int m_lastPos = 0;
+        bool m_skipNextTab;
     };
 
     bool init(LevelEditorLayer* editorLayer) {
@@ -440,6 +442,21 @@ class $modify(MyEditorUI, EditorUI) {
             }
         }
 
+        if (auto gridControlsMenu = getChildByID("alphalaneous.tinker/grid-size-controls")) {
+            if (auto btn1 = gridControlsMenu->getChildByType<CCMenuItem*>(0)) {
+                HijackCallback::set(btn1, [](auto orig, auto sender) {
+                    SoundHandler::get().playSound("grid-increase");
+                    orig(sender);
+                });
+            }
+            if (auto btn2 = gridControlsMenu->getChildByType<CCMenuItem*>(1)) {
+                HijackCallback::set(btn2, [](auto orig, auto sender) {
+                    SoundHandler::get().playSound("grid-decrease");
+                    orig(sender);
+                });
+            }
+        }
+
         if (auto hideUIbtn = typeinfo_cast<CCMenuItem*>(querySelector("> undo-menu > hjfod.betteredit/hide-ui-toggle"))) {
             HijackCallback::set(hideUIbtn, [](auto orig, auto sender) {
                 SoundHandler::get().playSound("toggle-ui");
@@ -447,14 +464,50 @@ class $modify(MyEditorUI, EditorUI) {
             });
         }
 
-        if (auto buildTabsMenu = getChildByID("build-tabs-menu")) {
-            for (auto child : buildTabsMenu->getChildrenExt()) {
-                auto item = typeinfo_cast<CCMenuItem*>(child);
-                if (!item) continue;
-                HijackCallback::set(item, [](auto orig, auto sender) {
+        if (auto hideUIbtn = typeinfo_cast<CCMenuItem*>(querySelector("> undo-menu > alphalaneous.tinker/hide-ui-toggle"))) {
+            HijackCallback::set(hideUIbtn, [](auto orig, auto sender) {
+                SoundHandler::get().playSound("toggle-ui");
+                orig(sender);
+            });
+        }
+
+        if (!Loader::get()->isModLoaded("alphalaneous.editortab_api")) {
+            if (auto buildTabsMenu = getChildByID("build-tabs-menu")) {
+                for (auto child : buildTabsMenu->getChildrenExt()) {
+                    auto item = typeinfo_cast<CCMenuItem*>(child);
+                    if (!item) continue;
+                    HijackCallback::set(item, [](auto orig, auto sender) {
+                        SoundHandler::get().playSound("switch-tab");
+                        orig(sender);
+                    });
+                }
+            }
+        }
+        else {
+            auto fields = m_fields.self();
+        
+            alpha::editor_tabs::addTabSwitchCallback([this, fields] (auto ID) {
+                if (!fields->m_skipNextTab) {
                     SoundHandler::get().playSound("switch-tab");
-                    orig(sender);
-                });
+                }
+            });
+
+            alpha::editor_tabs::addModeSwitchCallback([this, fields] (auto ID) {
+                fields->m_skipNextTab = true;
+                runAction(CallFuncExt::create([fields] {
+                    fields->m_skipNextTab = false;
+                }));
+            });
+        }
+
+        if (auto toolbarMenu = getChildByID("toolbar-categories-menu")) {
+            for (auto child : toolbarMenu->getChildrenExt()) {
+                if (auto btn = typeinfo_cast<CCMenuItem*>(child)) {
+                    HijackCallback::set(btn, [](auto orig, auto sender) {
+                        SoundHandler::get().playSound("toolbar-categories");
+                        orig(sender);
+                    });
+                }
             }
         }
 
@@ -465,29 +518,14 @@ class $modify(MyEditorUI, EditorUI) {
             });
         }
 
-        if (auto linkMenu = getChildByID("link-menu")) {
-            if (auto btn = static_cast<CCMenuItem*>(linkMenu->getChildByID("alphalaneous.tinker/link-controls-toggle"))) {
-                HijackCallback::set(btn, [](auto orig, auto sender) {
-                    SoundHandler::get().playSound("toggle-link");
-                    orig(sender);
-                });
-            }
-            if (auto btn = static_cast<CCMenuItem*>(linkMenu->getChildByID("alphalaneous.improvedlink/link-controls-toggle"))) {
-                HijackCallback::set(btn, [](auto orig, auto sender) {
-                    SoundHandler::get().playSound("toggle-link");
-                    orig(sender);
-                });
-            }
-        }
-
-        if (auto buildTabsNavMenu = getChildByID("build-tabs-menu-navigation-menu")) {
-            if (auto nextBtn = static_cast<CCMenuItem*>(buildTabsNavMenu->getChildByID("next-button"))) {
+        if (auto buildTabsNavMenu = getChildByID("alphalaneous.editortab_api/tabs-navigation-menu")) {
+            if (auto nextBtn = buildTabsNavMenu->getChildByType<CCMenuItem*>(0)) {
                 HijackCallback::set(nextBtn, [](auto orig, auto sender) {
                     SoundHandler::get().playSound("tabs-next-page");
                     orig(sender);
                 });
             }
-            if (auto prevBtn = static_cast<CCMenuItem*>(buildTabsNavMenu->getChildByID("prev-button"))) {
+            if (auto prevBtn = buildTabsNavMenu->getChildByType<CCMenuItem*>(1)) {
                 HijackCallback::set(prevBtn, [](auto orig, auto sender) {
                     SoundHandler::get().playSound("tabs-prev-page");
                     orig(sender);
@@ -507,17 +545,6 @@ class $modify(MyEditorUI, EditorUI) {
                     SoundHandler::get().playSound("zoom-out");
                     orig(sender);
                 });
-            }
-        }
-
-        if (auto toolbarMenu = getChildByID("toolbar-categories-menu")) {
-            for (auto child : toolbarMenu->getChildrenExt()) {
-                if (auto btn = typeinfo_cast<CCMenuItem*>(child)) {
-                    HijackCallback::set(btn, [](auto orig, auto sender) {
-                        SoundHandler::get().playSound("toolbar-categories");
-                        orig(sender);
-                    });
-                }
             }
         }
 

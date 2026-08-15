@@ -6,7 +6,7 @@
 		"mac": "2.2081",
 		"ios": "2.2081"
 	},
-	"version": "v1.2.6",
+	"version": "v1.3.0",
 	"id": "alphalaneous.editorsounds",
 	"name": "Editor Sounds",
 	"developer": "Alphalaneous",
@@ -25,7 +25,11 @@
 		"editor", "enhancement"
 	],
 	"dependencies": {
-		"geode.node-ids": ">=v1.20.0"
+		"geode.node-ids": ">=v1.20.0",
+		"alphalaneous.editortab_api": {
+			"version": "v2.1.11",
+			"required": false
+		}
 	},
 	"settings": {
 		"enable-custom-sounds": {
@@ -41,5 +45,10 @@
 			"enable-if": "enable-custom-sounds",
 			"default": ""
 		}
+	},
+	"api": {
+		"include": [
+			"include/API.hpp"
+		]
 	}
 }

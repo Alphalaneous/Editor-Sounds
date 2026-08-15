@@ -1,5 +1,9 @@
+# 1.3.0
+- Add basic Optional API
+- Fix some sounds not playing
+
 # 1.2.6
-- Fix sounds disappearing after saving</c>
+- Fix sounds disappearing after saving
 
 # 1.2.5
 - Preload sounds to fix them not playing after first playtest
